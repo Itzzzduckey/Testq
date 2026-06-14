@@ -689,25 +689,61 @@ function doSignup(){
 function doLogout(){localStorage.removeItem('e6c');updNav();go('home');toast('Logged out','info')}
 
 // ---- Forgot password ----
-function doForgot1(){
+async function doForgot1() {
   clearErrs();
-  const em=document.getElementById('fEmail').value.trim();
-  const users=getUsers();let found=null;
-  for(const[k,u]of Object.entries(users)){if(u.email.toLowerCase()===em.toLowerCase()){found=k;break}}
-  if(!found){showErr('fEmailErr','fEmail');return}
-  _resetKey=found;
-  _resetCode=Math.random().toString(36).substring(2,8).toUpperCase();
-  // -------------------------------------------------------
-  // PRODUCTION HOOK — email the code here instead of showing it.
-  // Example:
-  //   fetch('/api/send-reset', { method:'POST',
-  //     headers:{'Content-Type':'application/json'},
-  //     body: JSON.stringify({ to: users[found].email, code: _resetCode }) });
-  // Remove the demo-notice div and resetCodeDisplay in production.
-  // -------------------------------------------------------
-  document.getElementById('resetCodeDisplay').textContent = _resetCode;
-  document.getElementById('fStep1').style.display='none';
-  document.getElementById('fStep2').style.display='block';
+  const em = document.getElementById('fEmail').value.trim();
+  if (!em) {
+    toast('Please enter your email', 'err');
+    return;
+  }
+
+  const users = getUsers();
+  let found = null;
+  for (const [k, u] of Object.entries(users)) {
+    if (u.email.toLowerCase() === em.toLowerCase()) {
+      found = k;
+      break;
+    }
+  }
+
+  if (!found) {
+    showErr('fEmailErr', 'fEmail');
+    return;
+  }
+
+  _resetKey = found;
+  _resetCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+  try {
+    const response = await fetch('/api/send-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        to: users[found].email, 
+        code: _resetCode 
+      })
+    });
+
+    if (response.ok) {
+      // === HIDE DEMO STUFF ===
+      const demoNotice = document.querySelector('.demo-notice');
+      const resetCodeBox = document.getElementById('resetCodeDisplay');
+      
+      if (demoNotice) demoNotice.style.display = 'none';
+      if (resetCodeBox) resetCodeBox.style.display = 'none';
+
+      // Show step 2
+      document.getElementById('fStep1').style.display = 'none';
+      document.getElementById('fStep2').style.display = 'block';
+
+      toast('Reset code sent to your email!', 'ok');
+    } else {
+      throw new Error();
+    }
+  } catch (e) {
+    console.error(e);
+    toast('Failed to send reset email. Please try again later.', 'err');
+  }
 }
 
 function doForgot2(){
